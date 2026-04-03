@@ -1,45 +1,71 @@
-# cpp-market-making-simulator
+# Event-Driven Market-Making Simulator with Inventory Risk Management
 
-A **C++20 market-making simulator** with an **Avellaneda–Stoikov** quoting model, a **naive fixed-spread** baseline, **limit-order-book** matching, **risk / PnL analytics**, and a **React** dashboard (**QuantFlow**) that connects over **WebSockets**. Use it to replay tick CSVs, tune γ/κ and risk limits, and compare strategies on identical data.
+A high-performance C++ market-making simulator that replays historical tick data through an event-driven pipeline, runs an Avellaneda–Stoikov optimal quoting strategy with live volatility estimation and inventory risk controls, and visualizes the full system state through a real-time WebSocket-connected dashboard.
 
----
+## What This Does
 
-## Features
+Market makers provide liquidity by continuously quoting bid and ask prices on an asset. The core challenge is inventory risk — when your fills are imbalanced, you accumulate a position that exposes you to adverse price moves. This simulator implements the Avellaneda–Stoikov (2008) framework, which derives mathematically optimal quotes that balance spread revenue against inventory risk in real time.
 
-- **Core engine**: `LimitOrderBook`, `MatchingEngine`, `OrderManager`, `RiskManager` (PnL, drawdown, Sharpe/Sortino, inventory stats).
-- **Strategies**: Avellaneda–Stoikov optimal quotes vs. symmetric fixed half-spread (`fixed_spread_mm`).
-- **Replay**: CSV market ticks → event bus → strategy → simulated liquidity taking.
-- **Servers**: `mmsim_server` (CLI batch), `mmsim_ws_server` (live WebSocket + control channel + offline A/B comparison).
-- **Dashboard**: real-time book, PnL chart, volatility estimators, trade log, control sliders, **strategy comparison report** (markdown + table).
+The system replays tick data from CSV through a lock-free event pipeline, computes optimal bid/ask placement using live volatility estimates, executes trades through a price-time priority matching engine, and streams the full state to a browser dashboard at 10Hz.
 
----
+## Architecture
 
-## Key results (Avellaneda–Stoikov vs naive fixed spread)
+```
+ Tick Data (CSV)
+      │
+      ▼
+┌──────────────┐     ┌───────────────────────────┐
+│  Market Data  │────▶│  SPSC Lock-Free Ring Buf  │
+│  Feed Replay  │     │  (Event Bus)              │
+└──────────────┘     └─────────┬─────────────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │  Avellaneda-Stoikov  │◀── Volatility Estimator
+                    │  Strategy Engine     │    (CC / Parkinson / YZ)
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │  Order Manager       │
+                    │  + Matching Engine   │
+                    └──────────┬──────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              ▼                ▼                 ▼
+     ┌──────────────┐  ┌────────────┐  ┌──────────────┐
+     │ Limit Order   │  │   Risk     │  │  WebSocket   │
+     │ Book (LOB)    │  │  Manager   │  │  Server      │
+     └──────────────┘  │ + Analytics│  └──────┬───────┘
+                       └────────────┘         │
+                                              ▼
+                                     ┌──────────────┐
+                                     │    React      │
+                                     │   Dashboard   │
+                                     └──────────────┘
+```
 
-Offline **A/B** runs replay the **same CSV** twice (parameters from the live server config). Metrics are **path-dependent** (fills differ); treat numbers as **dataset-specific**.
+Event-driven, single-threaded hot path. Every tick flows through the pipeline as a typed event on a lock-free SPSC ring buffer. The strategy recalculates optimal quotes, the order manager updates the book, and the matching engine resolves fills — with heap allocation avoided in the critical path where possible.
 
-| Metric | Typical use | Avellaneda–Stoikov | Fixed spread (naive) |
-|--------|-------------|--------------------|----------------------|
-| Role | — | Inventory-aware reservation price + intensity-based spread | Constant half-spread around mid |
-| Sharpe / Sortino | Risk-adjusted returns | Often better when inventory risk dominates | Baseline; can be competitive if spread matches microstructure |
-| Max drawdown | Tail risk | Varies with γ, κ, σ, τ | Often simpler inventory dynamics |
-| PnL & inventory stats | Outcome | From `RiskManager` after full replay | Same |
+## Key Results
 
-**How to generate your table:** start `mmsim_ws_server`, open the dashboard → **Control** → set **fixed half-spread** → **Run A/B comparison**. The **Strategy comparison** panel shows a side-by-side table and markdown export.
+### Strategy comparison: Avellaneda–Stoikov vs naive fixed spread
 
----
+Offline **A/B** runs replay the **same CSV** twice (parameters from the live server config). Metrics are **path-dependent** (fills differ); treat numbers as **dataset-specific** — generate your own table from the dashboard’s **Strategy comparison** panel after a run.
 
-## Performance benchmarks
+The Avellaneda–Stoikov strategy uses a **reservation price** that shifts when inventory builds, skewing quotes toward reducing position — a mechanism absent in naive fixed-spread quoting.
 
-Built with `mmsim_bench` (Google Benchmark). Example run on a **32-thread @ ~2.4 GHz** Windows machine (numbers vary by CPU and load):
+### Volatility estimator convergence
+
+Synthetic GBM tests and manual checks (`tests/test_volatility_estimators_manual.cpp`) compare close-to-close, Parkinson, and Yang–Zhang estimators against a known σ. Yang–Zhang typically uses OHLC information efficiently; the **default** choice for live σ depends on your data and window — run the manual test or your own calibration to compare.
+
+## Performance
+
+Microbenchmarks are built as **`mmsim_bench`** (Google Benchmark). Example run on a **32-thread @ ~2.4 GHz** Windows machine (numbers vary by CPU and load):
 
 | Benchmark | Time (ns/op) | Notes |
 |-----------|--------------|--------|
 | `event_bus/push_pop_pair` | ~6 | SPSC ring: one push + one pop |
 | `order_book/add_cancel/8` | ~780 | Add + cancel; book depth 8/side |
 | `order_book/add_cancel/64` | ~4.2k | Deeper book |
-| `order_book/add_cancel/512` | ~25k | |
-| `order_book/add_cancel/4096` | ~250k–460k | Worst-case depth in range |
 | `matching_engine/aggressive_buy_match` | ~5 | Hot-path aggressive match |
 | `pipeline/tick_to_trade` | ~28 | Bus pop + `risk.mark` + AS quotes + one match |
 
@@ -48,24 +74,38 @@ Built with `mmsim_bench` (Google Benchmark). Example run on a **32-thread @ ~2.4
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DMMSIM_BUILD_BENCH=ON
 cmake --build build --target mmsim_bench
-./build/bench/mmsim_bench    # or mmsim_bench.exe on Windows
+./build/bench/mmsim_bench    # or build/bench/mmsim_bench.exe on Windows
 ```
 
 CSV export: `./build/bench/mmsim_bench --benchmark_format=csv`.
 
----
+For profiling, use **perf** (Linux), **Very Sleepy**, Visual Studio **CPU Usage**, or **ETW** on Windows against `mmsim_ws_server` (symbols required).
+
+## Dashboard
+
+The React dashboard connects over WebSocket and renders the simulation state in real time:
+
+- **Order book depth** — bid/ask volume bars with the strategy’s quotes in context
+- **PnL curve** — realized and unrealized PnL
+- **Inventory** — current position vs limits
+- **Volatility panel** — multiple estimators side by side
+- **Trade log** — fills with timestamps, side, price, and inventory
+- **Parameter controls** — γ, κ, vol window, and risk settings while the simulation runs
 
 ## Quick start
 
 ### Prerequisites
 
-- **CMake** ≥ 3.20, **C++20** compiler (MSVC, GCC, or Clang)
+- **CMake** ≥ 3.20, **C++20** compiler (GCC 12+, Clang 15+, or MSVC)
 - **Node.js** 18+ (for the dashboard)
 - **Git** (FetchContent pulls GoogleTest, Benchmark, websocketpp, nlohmann/json, Asio)
 
 ### Build (C++)
 
 ```bash
+git clone https://github.com/yourusername/cpp-market-making-simulator.git
+cd cpp-market-making-simulator
+
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
@@ -77,8 +117,8 @@ Artifacts (paths may vary):
 | `mmsim_core` | Static library |
 | `mmsim_server` | Batch CSV replay (CLI) |
 | `mmsim_ws_server` | WebSocket server + simulation |
-| `mmsim_tests` | Unit tests (`ctest` or run executable) |
-| `mmsim_bench` | Microbenchmarks (optional: `-DMMSIM_BUILD_BENCH=ON`) |
+| `mmsim_tests` | Unit tests |
+| `mmsim_bench` | Microbenchmarks (optional) |
 
 ### Run batch simulation
 
@@ -100,71 +140,50 @@ npm run dev
 
 Open the printed local URL (e.g. `http://localhost:5173`). The UI expects `ws://localhost:8080` unless you change it in `App.tsx`.
 
-### Tests & benchmarks
+### Tests
 
 ```bash
 cd build && ctest --output-on-failure
-./bench/mmsim_bench
 ```
 
----
+### Benchmarks
 
-## Tech stack
-
-| Layer | Technology |
-|-------|------------|
-| Language | C++20 |
-| Build | CMake |
-| Core tests | GoogleTest |
-| Benchmarks | Google Benchmark |
-| JSON | nlohmann/json |
-| WebSocket server | websocketpp + Asio (standalone) |
-| Frontend | TypeScript, React 19, Vite 6 |
-| Styling | Tailwind CSS |
-| Charts | Recharts |
-
----
-
-## Repository layout
-
-```
-├── .github/workflows/    # GitHub Actions CI
-├── core/                 # mmsim_core — engine + strategies + risk
-├── server/               # mmsim_server, mmsim_ws_server, comparison_sim, ws hub
-├── bench/                # mmsim_bench
-├── tests/                # unit tests
-├── dashboard/            # QuantFlow UI
-├── data/                 # sample CSV ticks
-├── LICENSE               # MIT
-└── .clang-format         # C++ style (enforced in CI)
+```bash
+cd build && ./bench/mmsim_bench
 ```
 
----
+## Design decisions
+
+**Why a lock-free SPSC ring buffer?** In the hot path, mutex contention adds unpredictable latency. The SPSC ring buffer gives bounded, deterministic behavior for push/pop — one producer (feed) and one consumer (sim loop) match this linear pipeline.
+
+**Why `std::map` for price levels?** Real data spans an unpredictable price range. A flat array would require fixed bounds and waste memory on sparse regions. `std::map` yields O(log N) per level with N = active price levels (typically modest).
+
+**Why three volatility estimators?** Close-to-close is standard; Parkinson uses range information; Yang–Zhang adds open/close handling and is useful for OHLC-style bars. Running all three exposes how estimator choice affects strategy behavior.
+
+**Fixed-point prices** — `Price` / `Quantity` as integers (`Price` × 10 000) avoids floating-point ordering bugs in the book and keeps PnL arithmetic deterministic; conversion to display happens at the serialization boundary.
+
+## Project structure
+
+```
+cpp-market-making-simulator/
+├── .github/workflows/     CI
+├── core/                  mmsim_core — engine, strategies, risk, volatility
+├── server/                mmsim_server, mmsim_ws_server, comparison_sim, WebSocket hub
+├── dashboard/             React + TypeScript + Vite + Recharts
+├── bench/                 Google Benchmark microbenchmarks
+├── tests/                 GoogleTest suite
+├── data/                  sample CSV ticks
+├── LICENSE
+└── .clang-format
+```
+
+## References
+
+- Avellaneda, M. & Stoikov, S. (2008). High-frequency trading in a limit order book. *Quantitative Finance*, 8(3), 217–224.
+- Yang, D. & Zhang, Q. (2000). Drift-independent volatility estimation based on high, low, open, and close prices. *Journal of Business*, 73(3), 477–492.
+- Parkinson, M. (1980). The extreme value method for estimating the variance of the rate of return. *Journal of Business*, 53(1), 61–65.
+- Thompson, T. (2011). LMAX Disruptor: High performance alternative to bounded queues. LMAX Exchange.
 
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
----
-
-## CI & code style
-
-GitHub Actions (`.github/workflows/ci.yml`) builds on **Ubuntu** with **g++**, runs **`ctest`**, runs **`mmsim_bench`** as a smoke test, and checks **`clang-format`** against `core/`, `server/`, `tests/`, and `bench/` using `.clang-format`.
-
-Format locally (requires `clang-format` on your `PATH`, e.g. `pip install clang-format` on Windows):
-
-```bash
-find core server tests bench \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) -print0 | xargs -0 clang-format -i
-```
-
-PowerShell:
-
-```powershell
-Get-ChildItem core, server, tests, bench -Recurse -Include *.cpp, *.h, *.hpp | ForEach-Object { clang-format -i $_.FullName }
-```
-
----
-
-## Project status
-
-Project structure and dependencies are defined in the root `CMakeLists.txt` and per-target `CMakeLists.txt`. Extend or pin versions there as needed for your environment.
