@@ -5,8 +5,8 @@
 
 #include "mmsim/event_bus.h"
 
-#include <barrier>
 #include <atomic>
+#include <barrier>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -212,7 +212,8 @@ bool test_concurrent_million_and_throughput(double* out_events_per_sec) {
         return false;
     }
 
-    std::printf("Throughput (concurrent 1M): %.0f events/sec (wall %.3f s)\n", *out_events_per_sec, sec);
+    std::printf("Throughput (concurrent 1M): %.0f events/sec (wall %.3f s)\n", *out_events_per_sec,
+                sec);
 
     if (*out_events_per_sec < 1'000'000.0) {
         std::fprintf(stderr, "WARN: throughput below 1M events/sec (minimum per spec)\n");
