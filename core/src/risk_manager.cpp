@@ -38,7 +38,7 @@ bool RiskManager::allow_order(Side side, Quantity quantity) const {
                                                   : -static_cast<long double>(quantity);
     const long double np = static_cast<long double>(position_) + delta;
     const long double lim = static_cast<long double>(cfg_.max_position);
-    return std::fabsl(np) <= lim + 1e-12L;
+    return std::abs(np) <= lim + 1e-12L;
 }
 
 void RiskManager::on_order_submitted() {
