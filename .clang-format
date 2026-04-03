@@ -1,0 +1,17 @@
+# C++20 — cpp-market-making-simulator
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+SortIncludes: true
+IncludeBlocks: Preserve
+NamespaceIndentation: None
+FixNamespaceComments: true
+BreakBeforeBraces: Attach
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReflowComments: true

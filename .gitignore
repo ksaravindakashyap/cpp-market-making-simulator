@@ -1,0 +1,66 @@
+# CMake / build (always regenerate with cmake -B)
+build/
+build*/
+out/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+*.ninja
+.ninja_deps
+.ninja_log
+install_manifest.txt
+
+# Generated (optional: copy to project root if you use it)
+compile_commands.json
+
+# IDE & editors
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.VC.db
+*.opendb
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Compiled artifacts (if any outside build/)
+*.o
+*.obj
+*.exe
+*.a
+*.lib
+*.dll
+*.pdb
+*.ilk
+*.exp
+*.so
+*.dylib
+
+# Node / dashboard
+dashboard/node_modules/
+dashboard/dist/
+dashboard/.vite/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json.bak
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs & temp
+*.log
+*.tmp
+*.temp

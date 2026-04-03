@@ -1,0 +1,4 @@
+timestamp_ns,price,quantity,side
+1000000,10000,5,BUY
+2000000,10100,3,SELL
+3500000,10050,2,BUY
