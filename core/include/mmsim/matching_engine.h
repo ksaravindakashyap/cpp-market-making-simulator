@@ -20,7 +20,8 @@ class MatchingEngine {
 
     /// Aggressive limit order: match against the book, then rest any remainder.
     /// Fails if `quantity <= 0`, `id` already exists, or resting append fails.
-    /// `aggressor_strategy`: resting orders with the same non-zero strategy do not match (self-trade).
+    /// `aggressor_strategy`: resting orders with the same non-zero strategy do not match
+    /// (self-trade).
     [[nodiscard]] bool submit_order(OrderId id, Side side, Price price, Quantity quantity,
                                     std::vector<FillData>& fills_out,
                                     StrategyId aggressor_strategy = 0);

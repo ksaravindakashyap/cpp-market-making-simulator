@@ -51,7 +51,7 @@ void fail(const char* msg) {
 }
 
 [[nodiscard]] std::optional<Quantity> qty_for_order_at_price(const LimitOrderBook& book, OrderId id,
-                                                              Price price) {
+                                                             Price price) {
     const auto s = book.snapshot();
     for (const auto& lev : s.bids) {
         if (lev.price != price) {

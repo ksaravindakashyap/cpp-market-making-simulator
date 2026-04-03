@@ -605,8 +605,7 @@ int main(int argc, char** argv) {
             break;
         }
 
-        const bool sim_has_work =
-            feed.next_index() < feed.tick_count() || !bus.is_empty();
+        const bool sim_has_work = feed.next_index() < feed.tick_count() || !bus.is_empty();
 
         // Replay finished: keep WebSocket up so the dashboard can show last state and reconnect
         // does not spin (process exits immediately after a tiny CSV otherwise).
@@ -646,8 +645,7 @@ int main(int argc, char** argv) {
 
     hub.stop();
 
-    const auto t_wall_end =
-        sim_idle_after_run ? t_wall_sim_end : std::chrono::steady_clock::now();
+    const auto t_wall_end = sim_idle_after_run ? t_wall_sim_end : std::chrono::steady_clock::now();
     const double wall_s = std::chrono::duration<double>(t_wall_end - t_wall0).count();
 
     print_summary(risk, ticks_processed, wall_s);

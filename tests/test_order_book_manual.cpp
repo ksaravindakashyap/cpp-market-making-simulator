@@ -96,7 +96,7 @@ void fail(const char* msg) {
 int main() {
     std::printf("=== test_order_book_manual (LimitOrderBook) ===\n");
     std::printf("Price scale: raw = human * 10000 (e.g. 100.00 -> %lld)\n\n",
-                  static_cast<long long>(price_from_human(100.0)));
+                static_cast<long long>(price_from_human(100.0)));
 
     LimitOrderBook book;
 
@@ -200,7 +200,8 @@ int main() {
         if (!bb || *bb != p995) {
             fail("8. best_bid should be 99.50");
         } else {
-            std::printf("PASS: 8. best_bid() = %.2f after clearing 100.00 level\n", human_price(*bb));
+            std::printf("PASS: 8. best_bid() = %.2f after clearing 100.00 level\n",
+                        human_price(*bb));
         }
     }
 
@@ -243,11 +244,12 @@ int main() {
     } else if (!bids_descending(top) || !asks_ascending(top)) {
         fail("10. sort order");
     } else {
-        std::printf("PASS: 10. snapshot top 10: %zu bid levels, %zu ask levels; bids non-increasing, "
-                    "asks non-decreasing\n",
-                    top.bids.size(), top.asks.size());
-        std::printf("      first bid level %.4f, first ask level %.4f\n", human_price(top.bids[0].price),
-                    human_price(top.asks[0].price));
+        std::printf(
+            "PASS: 10. snapshot top 10: %zu bid levels, %zu ask levels; bids non-increasing, "
+            "asks non-decreasing\n",
+            top.bids.size(), top.asks.size());
+        std::printf("      first bid level %.4f, first ask level %.4f\n",
+                    human_price(top.bids[0].price), human_price(top.asks[0].price));
     }
 
     std::printf("\n--- Summary: %d failure(s) ---\n", g_failures);

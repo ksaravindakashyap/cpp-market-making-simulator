@@ -3,15 +3,11 @@
  * multi-level sweep, and FillData (maker/taker/timestamp) validation.
  */
 
-
-
 #include "mmsim/matching_engine.h"
 
 #include "mmsim/order_book.h"
 
 #include "mmsim/types.h"
-
-
 
 #include <cmath>
 
@@ -21,11 +17,7 @@
 
 #include <vector>
 
-
-
 namespace {
-
-
 
 using mmsim::FillData;
 
@@ -43,37 +35,24 @@ using mmsim::Side;
 
 using mmsim::StrategyId;
 
-
-
 int g_failures = 0;
-
-
 
 void pass(const char* msg) {
 
     std::printf("PASS: %s\n", msg);
-
 }
-
-
 
 void fail(const char* msg) {
 
     std::fprintf(stderr, "FAIL: %s\n", msg);
 
     ++g_failures;
-
 }
-
-
 
 [[nodiscard]] Price px(double human) {
 
     return static_cast<Price>(std::llround(human * 10000.0));
-
 }
-
-
 
 [[nodiscard]] bool verify_fill_leg(const FillData& f, OrderId order_id, OrderId maker_id,
 
@@ -86,11 +65,9 @@ void fail(const char* msg) {
         f.price != price || f.quantity != qty || f.timestamp_ns != expected_ts || f.fee != 0) {
 
         return false;
-
     }
 
     return true;
-
 }
 
 [[nodiscard]] Quantity ask_qty_at_price(const LimitOrderBook& book, Price price) {
@@ -104,30 +81,20 @@ void fail(const char* msg) {
             for (const auto& o : lev.orders) {
 
                 s += o.quantity;
-
             }
 
             return s;
-
         }
-
     }
 
     return 0;
-
 }
 
-
-
 } // namespace
-
-
 
 int main() {
 
     std::printf("=== test_matching_edge_cases_manual ===\n\n");
-
-
 
     const Price p49 = px(49.0);
 
@@ -143,8 +110,6 @@ int main() {
 
     const Price p103 = px(103.0);
 
-
-
     // --- 1. Self-trade prevention (same non-zero strategy) ---
 
     {
@@ -157,14 +122,11 @@ int main() {
 
         std::vector<FillData> fills;
 
-
-
         if (!book.add_order(1, Side::SELL, p50, 100, kStrat)) {
 
             fail("1. add_order SELL strat");
 
             return EXIT_FAILURE;
-
         }
 
         if (!engine.submit_order(2, Side::BUY, p50, 100, fills, kStrat)) {
@@ -172,13 +134,11 @@ int main() {
             fail("1. submit_order BUY strat");
 
             return EXIT_FAILURE;
-
         }
 
         if (!fills.empty()) {
 
             fail("1. self-trade: expected no fills");
-
         }
 
         if (book.order_count() != 2u) {
@@ -188,10 +148,7 @@ int main() {
         } else {
 
             pass("1. Self-trade prevention (same strategy, no match)");
-
         }
-
-
 
         // Cross with different strategy should match
 
@@ -206,7 +163,6 @@ int main() {
             fail("1b. add_order");
 
             return EXIT_FAILURE;
-
         }
 
         if (!engine2.submit_order(11, Side::BUY, p50, 50, fills2, 99u)) {
@@ -214,7 +170,6 @@ int main() {
             fail("1b. submit");
 
             return EXIT_FAILURE;
-
         }
 
         if (fills2.size() != 2u || fills2[0].quantity != 50) {
@@ -224,16 +179,10 @@ int main() {
         } else {
 
             pass("1b. Different strategy crosses normally");
-
         }
-
     }
 
-
-
     std::printf("\n");
-
-
 
     // --- 2. Exact fill, book empty ---
 
@@ -250,7 +199,6 @@ int main() {
             fail("2. add BUY");
 
             return EXIT_FAILURE;
-
         }
 
         if (!engine.submit_order(2, Side::SELL, p50, 100, fills)) {
@@ -258,7 +206,6 @@ int main() {
             fail("2. submit SELL");
 
             return EXIT_FAILURE;
-
         }
 
         if (fills.size() != 2u || book.order_count() != 0u) {
@@ -268,7 +215,6 @@ int main() {
         } else {
 
             pass("2. Exact fill @50, book empty");
-
         }
 
         if (fills.size() >= 2u) {
@@ -284,18 +230,11 @@ int main() {
             } else {
 
                 pass("2. FillData fields (maker, taker, price, qty, timestamp)");
-
             }
-
         }
-
     }
 
-
-
     std::printf("\n");
-
-
 
     // --- 3. Partial fill ---
 
@@ -312,7 +251,6 @@ int main() {
             fail("3. add BUY");
 
             return EXIT_FAILURE;
-
         }
 
         if (!engine.submit_order(2, Side::SELL, p50, 100, fills)) {
@@ -320,13 +258,11 @@ int main() {
             fail("3. submit SELL");
 
             return EXIT_FAILURE;
-
         }
 
         if (fills.size() != 2u || fills[0].quantity != 100) {
 
             fail("3. fill size/qty");
-
         }
 
         const auto snap = book.snapshot();
@@ -340,16 +276,10 @@ int main() {
         } else {
 
             pass("3. Partial fill: SELL fully filled, BUY 100 left");
-
         }
-
     }
 
-
-
     std::printf("\n");
-
-
 
     // --- 4. Multiple fills against one large bid ---
 
@@ -366,7 +296,6 @@ int main() {
             fail("4. add BUY");
 
             return EXIT_FAILURE;
-
         }
 
         if (!engine.submit_order(2, Side::SELL, p50, 100, fills)) {
@@ -374,13 +303,11 @@ int main() {
             fail("4. SELL 2");
 
             return EXIT_FAILURE;
-
         }
 
         if (fills.size() != 2u || fills[0].quantity != 100) {
 
             fail("4. first SELL");
-
         }
 
         if (!engine.submit_order(3, Side::SELL, p50, 100, fills)) {
@@ -388,13 +315,11 @@ int main() {
             fail("4. SELL 3");
 
             return EXIT_FAILURE;
-
         }
 
         if (fills.size() != 2u || fills[0].quantity != 100) {
 
             fail("4. second SELL");
-
         }
 
         if (!engine.submit_order(4, Side::SELL, p50, 100, fills)) {
@@ -402,13 +327,11 @@ int main() {
             fail("4. SELL 4");
 
             return EXIT_FAILURE;
-
         }
 
         if (fills.size() != 2u || fills[0].quantity != 100) {
 
             fail("4. third SELL");
-
         }
 
         const auto snap = book.snapshot();
@@ -422,16 +345,10 @@ int main() {
         } else {
 
             pass("4. Three SELLs 100 each vs BUY 500: 200 remaining on BUY");
-
         }
-
     }
 
-
-
     std::printf("\n");
-
-
 
     // --- 5. No match ---
 
@@ -448,7 +365,6 @@ int main() {
             fail("5. BUY");
 
             return EXIT_FAILURE;
-
         }
 
         if (!engine.submit_order(2, Side::SELL, p51, 100, fills)) {
@@ -456,13 +372,11 @@ int main() {
             fail("5. SELL");
 
             return EXIT_FAILURE;
-
         }
 
         if (!fills.empty()) {
 
             fail("5. no fills expected");
-
         }
 
         if (book.order_count() != 2u || book.best_bid() != p49 || book.best_ask() != p51) {
@@ -472,16 +386,10 @@ int main() {
         } else {
 
             pass("5. No cross: both sides rest");
-
         }
-
     }
 
-
-
     std::printf("\n");
-
-
 
     // --- 6. Multi-level sweep (buy lifts asks 100, 101, 102) ---
 
@@ -498,7 +406,6 @@ int main() {
             fail("6. ask 100");
 
             return EXIT_FAILURE;
-
         }
 
         if (!book.add_order(2, Side::SELL, p101, 100)) {
@@ -506,7 +413,6 @@ int main() {
             fail("6. ask 101");
 
             return EXIT_FAILURE;
-
         }
 
         if (!book.add_order(3, Side::SELL, p102, 100)) {
@@ -514,7 +420,6 @@ int main() {
             fail("6. ask 102");
 
             return EXIT_FAILURE;
-
         }
 
         if (!engine.submit_order(4, Side::BUY, p103, 250, fills)) {
@@ -522,7 +427,6 @@ int main() {
             fail("6. BUY");
 
             return EXIT_FAILURE;
-
         }
 
         // 3 trades -> 6 FillData
@@ -546,18 +450,11 @@ int main() {
             } else {
 
                 pass("6. Sweep: 100@100, 100@101, 50@102; 50 left @102");
-
             }
-
         }
-
     }
 
-
-
     std::printf("\n");
-
-
 
     // --- 7. Fill struct consistency across a batch ---
 
@@ -574,7 +471,6 @@ int main() {
             fail("7. add");
 
             return EXIT_FAILURE;
-
         }
 
         if (!engine.submit_order(2, Side::BUY, p50, 10, fills)) {
@@ -582,7 +478,6 @@ int main() {
             fail("7. submit");
 
             return EXIT_FAILURE;
-
         }
 
         if (fills.size() != 2u) {
@@ -595,7 +490,8 @@ int main() {
 
             bool ok = verify_fill_leg(fills[0], 1, 1, 2, p50, 10, ts) &&
 
-                      verify_fill_leg(fills[1], 2, 1, 2, p50, 10, ts) && fills[0].timestamp_ns == fills[1].timestamp_ns;
+                      verify_fill_leg(fills[1], 2, 1, 2, p50, 10, ts) &&
+                      fills[0].timestamp_ns == fills[1].timestamp_ns;
 
             if (!ok) {
 
@@ -604,19 +500,11 @@ int main() {
             } else {
 
                 pass("7. FillData legs share timestamp; maker=taker ids consistent");
-
             }
-
         }
-
     }
-
-
 
     std::printf("\n--- Summary: %d failure(s) ---\n", g_failures);
 
     return g_failures > 0 ? EXIT_FAILURE : EXIT_SUCCESS;
-
 }
-
-
