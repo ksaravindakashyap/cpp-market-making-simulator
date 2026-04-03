@@ -6,6 +6,7 @@
 #include <chrono>
 #include <iostream>
 #include <set>
+#include <vector>
 
 namespace mmsim::ws {
 
@@ -21,10 +22,15 @@ nlohmann::json wrap_ch(std::string_view ch, nlohmann::json data) {
 
 } // namespace
 
+constexpr std::size_t kMaxTradeHistory = 100;
+
 struct WsHub::Impl {
     WsServer server;
     std::set<connection_hdl, std::owner_less<connection_hdl>> connections;
     std::mutex conn_mu;
+
+    std::mutex trade_mu;
+    std::deque<nlohmann::json> trade_history;
 
     std::mutex control_mu;
     std::deque<nlohmann::json> control_queue;
@@ -93,8 +99,22 @@ void WsHub::start(std::uint16_t port, std::function<nlohmann::json()> book_fn,
     impl_->server.clear_error_channels(websocketpp::log::elevel::all);
 
     impl_->server.set_open_handler([this](connection_hdl hdl) {
-        std::lock_guard<std::mutex> lock(impl_->conn_mu);
-        impl_->connections.insert(hdl);
+        std::vector<nlohmann::json> history_copy;
+        {
+            std::lock_guard<std::mutex> lock(impl_->trade_mu);
+            history_copy.assign(impl_->trade_history.begin(), impl_->trade_history.end());
+        }
+        {
+            std::lock_guard<std::mutex> lock(impl_->conn_mu);
+            impl_->connections.insert(hdl);
+        }
+        for (const auto& row : history_copy) {
+            try {
+                const nlohmann::json msg = wrap_ch("trades", row);
+                impl_->server.send(hdl, msg.dump(), websocketpp::frame::opcode::text);
+            } catch (...) {
+            }
+        }
     });
 
     impl_->server.set_close_handler([this](connection_hdl hdl) {
@@ -205,10 +225,25 @@ void WsHub::post_trade(const nlohmann::json& trade_data) {
             if (!impl_) {
                 return;
             }
+            {
+                std::lock_guard<std::mutex> lock(impl_->trade_mu);
+                impl_->trade_history.push_back(trade_data);
+                while (impl_->trade_history.size() > kMaxTradeHistory) {
+                    impl_->trade_history.pop_front();
+                }
+            }
             impl_->send_channel("trades", trade_data);
         });
     } catch (...) {
     }
+}
+
+void WsHub::clear_trade_history() {
+    if (!impl_) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(impl_->trade_mu);
+    impl_->trade_history.clear();
 }
 
 void WsHub::broadcast_channel(std::string_view channel, const nlohmann::json& data) {

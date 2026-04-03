@@ -43,6 +43,9 @@ class WsHub {
     /// Thread-safe: enqueue a trades-channel message (typically one fill).
     void post_trade(const nlohmann::json& trade_data);
 
+    /// Clear buffered trade rows (call when simulation resets).
+    void clear_trade_history();
+
     /// Thread-safe: broadcast a single JSON payload on any channel (e.g. comparison report).
     void broadcast_channel(std::string_view channel, const nlohmann::json& data);
 

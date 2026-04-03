@@ -8,13 +8,9 @@
 
  */
 
-
-
 #include "mmsim/avellaneda_stoikov.h"
 
 #include "mmsim/types.h"
-
-
 
 #include <cmath>
 
@@ -30,8 +26,6 @@
 
 namespace {
 
-
-
 using mmsim::AsQuotes;
 
 using mmsim::AvellanedaStoikovStrategy;
@@ -40,53 +34,35 @@ using mmsim::Price;
 
 using mmsim::Quantity;
 
-
-
 int g_failures = 0;
-
-
 
 void fail(const char* msg) {
 
     std::fprintf(stderr, "FAIL: %s\n", msg);
 
     ++g_failures;
-
 }
-
-
 
 void pass(const char* msg) {
 
     std::printf("PASS: %s\n", msg);
-
 }
-
-
 
 [[nodiscard]] Price mid_price() {
 
     return static_cast<Price>(std::llround(100.0 * 10000.0));
-
 }
-
-
 
 [[nodiscard]] double human(Price p) {
 
     return static_cast<double>(p) / 10000.0;
-
 }
 
 } // namespace
 
-
-
 int main() {
 
     std::printf("=== test_avellaneda_stoikov_manual ===\n\n");
-
-
 
     const Price mid = mid_price();
 
@@ -98,11 +74,7 @@ int main() {
 
     const double kappa = 1.5;
 
-
-
     AvellanedaStoikovStrategy as(AvellanedaStoikovStrategy::Config{.gamma = gamma, .kappa = kappa});
-
-
 
     // --- 1. Zero inventory ---
 
@@ -118,13 +90,9 @@ int main() {
 
         const std::optional<AsQuotes> oq = as.optimal_quotes(mid, q, sigma, tau);
 
-
-
         const double mid_d = static_cast<double>(mid);
 
         const double spread_d = as.optimal_spread(sigma, tau);
-
-
 
         std::cout << std::fixed << std::setprecision(8);
 
@@ -132,7 +100,8 @@ int main() {
 
         std::cout << "|--------------------+---------------+-------------|\n";
 
-        std::cout << "| mid                | " << std::setw(13) << mid_d << " | " << std::setw(11) << human(mid)
+        std::cout << "| mid                | " << std::setw(13) << mid_d << " | " << std::setw(11)
+                  << human(mid)
 
                   << " |\n";
 
@@ -142,21 +111,21 @@ int main() {
 
         if (oq.has_value()) {
 
-            std::cout << "| bid                | " << std::setw(13) << static_cast<double>(oq->bid) << " | "
+            std::cout << "| bid                | " << std::setw(13) << static_cast<double>(oq->bid)
+                      << " | "
 
                       << std::setw(11) << human(oq->bid) << " |\n";
 
-            std::cout << "| ask                | " << std::setw(13) << static_cast<double>(oq->ask) << " | "
+            std::cout << "| ask                | " << std::setw(13) << static_cast<double>(oq->ask)
+                      << " | "
 
                       << std::setw(11) << human(oq->ask) << " |\n";
-
         }
 
-        std::cout << "| spread (double)    | " << std::setw(13) << spread_d << " | (sigma units) |\n";
+        std::cout << "| spread (double)    | " << std::setw(13) << spread_d
+                  << " | (sigma units) |\n";
 
         std::cout << '\n';
-
-
 
         const double tol = 1e-6 * std::max(1.0, std::abs(mid_d));
 
@@ -177,7 +146,6 @@ int main() {
         } else {
 
             ok = false;
-
         }
 
         if (!ok) {
@@ -187,18 +155,12 @@ int main() {
         } else {
 
             pass("1. Zero inventory: r = mid; bid/ask symmetric (within tick rounding)");
-
         }
 
         std::printf("    Printed spread (optimal_spread) = %.10f\n", spread_d);
-
     }
 
-
-
     std::printf("\n");
-
-
 
     // --- 2. Long inventory +20 ---
 
@@ -226,33 +188,36 @@ int main() {
 
         const double ask_long_d = r_long + spread * 0.5;
 
+        std::cout
+            << "| Case        | reservation (human) | ask (rounded) | ask (pre-round double) |\n";
 
-
-        std::cout << "| Case        | reservation (human) | ask (rounded) | ask (pre-round double) |\n";
-
-        std::cout << "|-------------+---------------------+---------------+------------------------|\n";
+        std::cout
+            << "|-------------+---------------------+---------------+------------------------|\n";
 
         std::cout << "| q=0         | " << std::setw(19) << human(mid) << " | " << std::setw(13)
 
-                  << (flat.has_value() ? human(flat->ask) : -1.0) << " | " << std::setw(22) << ask_flat_d
+                  << (flat.has_value() ? human(flat->ask) : -1.0) << " | " << std::setw(22)
+                  << ask_flat_d
 
                   << " |\n";
 
-        std::cout << "| q=+20       | " << std::setw(19) << r_long / 10000.0 << " | " << std::setw(13)
+        std::cout << "| q=+20       | " << std::setw(19) << r_long / 10000.0 << " | "
+                  << std::setw(13)
 
-                  << (lng.has_value() ? human(lng->ask) : -1.0) << " | " << std::setw(22) << ask_long_d
+                  << (lng.has_value() ? human(lng->ask) : -1.0) << " | " << std::setw(22)
+                  << ask_long_d
 
                   << " |\n";
 
-        std::cout << "| skew r0-r   | " << std::setw(19) << skew / 10000.0 << " |               |\n";
+        std::cout << "| skew r0-r   | " << std::setw(19) << skew / 10000.0
+                  << " |               |\n";
 
         std::cout << '\n';
 
-
-
         // Sub-tick reservation shift: compare doubles before integer rounding to Price ticks
 
-        bool ok = r_long < mid_d && r_long < r0 && ask_long_d < ask_flat_d && std::isfinite(ask_long_d);
+        bool ok =
+            r_long < mid_d && r_long < r0 && ask_long_d < ask_flat_d && std::isfinite(ask_long_d);
 
         if (!ok) {
 
@@ -261,18 +226,13 @@ int main() {
         } else {
 
             pass("2. Long inventory: reservation below mid; pre-round ask below flat case");
-
         }
 
-        std::printf("    Skew (mid - r), raw units: %.6f  human price: %.8f\n", skew, skew / 10000.0);
-
+        std::printf("    Skew (mid - r), raw units: %.6f  human price: %.8f\n", skew,
+                    skew / 10000.0);
     }
 
-
-
     std::printf("\n");
-
-
 
     // --- 3. Short inventory -20 ---
 
@@ -298,29 +258,31 @@ int main() {
 
         const double bid_short_d = r_short - spread * 0.5;
 
+        std::cout
+            << "| Case        | reservation (human) | bid (rounded) | bid (pre-round double) |\n";
 
-
-        std::cout << "| Case        | reservation (human) | bid (rounded) | bid (pre-round double) |\n";
-
-        std::cout << "|-------------+---------------------+---------------+------------------------|\n";
+        std::cout
+            << "|-------------+---------------------+---------------+------------------------|\n";
 
         std::cout << "| q=0         | " << std::setw(19) << human(mid) << " | " << std::setw(13)
 
-                  << (flat.has_value() ? human(flat->bid) : -1.0) << " | " << std::setw(22) << bid_flat_d
+                  << (flat.has_value() ? human(flat->bid) : -1.0) << " | " << std::setw(22)
+                  << bid_flat_d
 
                   << " |\n";
 
-        std::cout << "| q=-20       | " << std::setw(19) << r_short / 10000.0 << " | " << std::setw(13)
+        std::cout << "| q=-20       | " << std::setw(19) << r_short / 10000.0 << " | "
+                  << std::setw(13)
 
-                  << (sh.has_value() ? human(sh->bid) : -1.0) << " | " << std::setw(22) << bid_short_d
+                  << (sh.has_value() ? human(sh->bid) : -1.0) << " | " << std::setw(22)
+                  << bid_short_d
 
                   << " |\n";
 
         std::cout << '\n';
 
-
-
-        bool ok = r_short > mid_d && r_short > r0 && bid_short_d > bid_flat_d && std::isfinite(bid_short_d);
+        bool ok = r_short > mid_d && r_short > r0 && bid_short_d > bid_flat_d &&
+                  std::isfinite(bid_short_d);
 
         if (!ok) {
 
@@ -329,16 +291,10 @@ int main() {
         } else {
 
             pass("3. Short inventory: reservation above mid; pre-round bid above flat case");
-
         }
-
     }
 
-
-
     std::printf("\n");
-
-
 
     // --- 4. Volatility sensitivity ---
 
@@ -367,11 +323,9 @@ int main() {
             if (prev >= 0.0 && !(sp > prev + 1e-15)) {
 
                 mono = false;
-
             }
 
             prev = sp;
-
         }
 
         std::cout << '\n';
@@ -383,16 +337,10 @@ int main() {
         } else {
 
             pass("4. optimal_spread(sigma) strictly increasing in sigma on [0.01, 0.10]");
-
         }
-
     }
 
-
-
     std::printf("\n");
-
-
 
     // --- 5. Risk aversion: risk term vs full spread ---
 
@@ -422,7 +370,8 @@ int main() {
 
             const double g = 0.01 * static_cast<double>(k);
 
-            AvellanedaStoikovStrategy sg(AvellanedaStoikovStrategy::Config{.gamma = g, .kappa = kappa});
+            AvellanedaStoikovStrategy sg(
+                AvellanedaStoikovStrategy::Config{.gamma = g, .kappa = kappa});
 
             const double risk = g * s2t;
 
@@ -431,19 +380,17 @@ int main() {
             if (prev_risk >= 0.0 && !(risk > prev_risk + 1e-18)) {
 
                 risk_mono = false;
-
             }
 
             prev_risk = risk;
 
             if (k <= 10 || k % 10 == 0 || k == 100) {
 
-                std::cout << "| " << std::setw(5) << g << " | " << std::fixed << std::setprecision(8)
+                std::cout << "| " << std::setw(5) << g << " | " << std::fixed
+                          << std::setprecision(8)
 
                           << std::setw(18) << risk << " | " << std::setw(11) << full << " |\n";
-
             }
-
         }
 
         std::cout << '\n';
@@ -455,16 +402,10 @@ int main() {
         } else {
 
             pass("5. Risk component gamma*sigma^2*tau strictly increasing in gamma on grid");
-
         }
-
     }
 
-
-
     std::printf("\n");
-
-
 
     // --- 6. Extreme inventory ---
 
@@ -508,13 +449,11 @@ int main() {
                           << " | " << std::setw(11) << "n/a"
 
                           << " |\n";
-
             }
 
             if (!fin) {
 
                 ok = false;
-
             }
 
             if (has) {
@@ -526,11 +465,8 @@ int main() {
                 if (!std::isfinite(bd) || !std::isfinite(ad) || bd >= ad) {
 
                     ok = false;
-
                 }
-
             }
-
         }
 
         std::cout << '\n';
@@ -541,17 +477,12 @@ int main() {
 
         } else {
 
-            pass("6. Extreme inventory: no NaN/Inf; strategy may omit quotes if tick rounding invalid");
-
+            pass("6. Extreme inventory: no NaN/Inf; strategy may omit quotes if tick rounding "
+                 "invalid");
         }
-
     }
 
-
-
     std::printf("\n");
-
-
 
     // --- 7. Time decay ---
 
@@ -582,11 +513,9 @@ int main() {
             if (sp_prev_row >= 0.0 && !(sp < sp_prev_row + 1e-12)) {
 
                 narrow = false;
-
             }
 
             sp_prev_row = sp;
-
         }
 
         std::cout << '\n';
@@ -603,8 +532,6 @@ int main() {
 
         std::printf("    quotes at T-t=0: %s\n", q0.has_value() ? "ok" : "nullopt");
 
-
-
         if (!narrow || !ok0) {
 
             fail("7. Spread narrows as T-t decreases; tau=0 safe");
@@ -612,17 +539,10 @@ int main() {
         } else {
 
             pass("7. Spread decreases as T-t decreases; tau=0 yields finite spread and quotes");
-
         }
-
     }
-
-
 
     std::printf("\n--- Summary: %d failure(s) ---\n", g_failures);
 
     return g_failures > 0 ? EXIT_FAILURE : EXIT_SUCCESS;
-
 }
-
-

@@ -52,11 +52,11 @@ export function MetricsBar({
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-terminal-accent/40 bg-terminal-bg font-mono text-xs font-bold text-terminal-accent shadow-[0_0_12px_rgba(74,222,128,0.12)]"
             aria-hidden
           >
-            QF
+            MS
           </div>
           <div>
             <h1 className="font-sans text-base font-semibold tracking-tight text-terminal-fg sm:text-lg">
-              Quant<span className="text-terminal-accent">Flow</span>
+              MM<span className="text-terminal-accent">SIM</span>
             </h1>
             <p className="font-mono text-[10px] text-terminal-muted sm:text-[11px]">
               Market making simulator · live metrics

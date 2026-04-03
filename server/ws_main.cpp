@@ -531,11 +531,17 @@ int main(int argc, char** argv) {
 
     std::atomic<bool> comparison_busy{false};
 
-    while (!shutdown_requested && (feed.next_index() < feed.tick_count() || !bus.is_empty())) {
+    // Wall time for summary: capture when replay drains (not when user idles with WS open).
+    auto t_wall_sim_end = t_wall0;
+    bool sim_idle_after_run = false;
+
+    while (!shutdown_requested) {
         nlohmann::json ctrl;
         while (hub.try_pop_control(ctrl)) {
             const std::string cmd = ctrl.value("command", "");
             if (cmd == "reset") {
+                sim_idle_after_run = false;
+                hub.clear_trade_history();
                 feed.reset();
                 mmsim::Event ev;
                 while (bus.try_pop(ev)) {
@@ -599,6 +605,20 @@ int main(int argc, char** argv) {
             break;
         }
 
+        const bool sim_has_work =
+            feed.next_index() < feed.tick_count() || !bus.is_empty();
+
+        // Replay finished: keep WebSocket up so the dashboard can show last state and reconnect
+        // does not spin (process exits immediately after a tiny CSV otherwise).
+        if (!sim_has_work) {
+            if (!sim_idle_after_run) {
+                sim_idle_after_run = true;
+                t_wall_sim_end = std::chrono::steady_clock::now();
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            continue;
+        }
+
         if (sim_paused) {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
             continue;
@@ -626,8 +646,9 @@ int main(int argc, char** argv) {
 
     hub.stop();
 
-    const auto t_wall1 = std::chrono::steady_clock::now();
-    const double wall_s = std::chrono::duration<double>(t_wall1 - t_wall0).count();
+    const auto t_wall_end =
+        sim_idle_after_run ? t_wall_sim_end : std::chrono::steady_clock::now();
+    const double wall_s = std::chrono::duration<double>(t_wall_end - t_wall0).count();
 
     print_summary(risk, ticks_processed, wall_s);
     return 0;
