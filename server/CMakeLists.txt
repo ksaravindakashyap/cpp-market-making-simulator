@@ -41,10 +41,34 @@ if(MMSIM_BUILD_WEBSOCKET)
     )
     add_library(nlohmann_json::nlohmann_json ALIAS mmsim_nlohmann_json)
 
+    # websocketpp 0.8.2 is not C++20-clean on GCC (template destructor/ctor parse errors).
+    # This TU only includes websocketpp + nlohmann; compile it as C++17. Rest of the exe stays C++20.
+    add_library(mmsim_ws_hub OBJECT ws/ws_hub.cpp)
+    set_target_properties(mmsim_ws_hub PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    target_link_libraries(mmsim_ws_hub PRIVATE nlohmann_json::nlohmann_json)
+    target_include_directories(mmsim_ws_hub PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${asio_fc_SOURCE_DIR}/asio/include"
+        "${websocketpp_fc_SOURCE_DIR}"
+    )
+    target_compile_definitions(mmsim_ws_hub PRIVATE
+        ASIO_STANDALONE
+        ASIO_HAS_STD_CHRONO
+        WEBSOCKETPP_CPP11_STL
+        _WEBSOCKETPP_CPP11_THREAD_
+    )
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        target_compile_options(mmsim_ws_hub PRIVATE -Wno-template-id-cdtor)
+    endif()
+
     add_executable(mmsim_ws_server
         ws_main.cpp
-        ws/ws_hub.cpp
         comparison_sim.cpp
+        $<TARGET_OBJECTS:mmsim_ws_hub>
     )
     target_include_directories(mmsim_ws_server PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -59,13 +83,9 @@ if(MMSIM_BUILD_WEBSOCKET)
         ASIO_STANDALONE
         ASIO_HAS_STD_CHRONO
         WEBSOCKETPP_CPP11_STL
-        # websocketpp skips C++11 threads on MinGW unless this is set
         _WEBSOCKETPP_CPP11_THREAD_
     )
     if(WIN32)
         target_link_libraries(mmsim_ws_server PRIVATE ws2_32 mswsock)
-    endif()
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(mmsim_ws_server PRIVATE -Wno-template-id-cdtor)
     endif()
 endif()
