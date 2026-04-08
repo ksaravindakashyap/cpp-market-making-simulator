@@ -92,6 +92,13 @@ The React dashboard connects over WebSocket and renders the simulation state in 
 - **Trade log** — fills with timestamps, side, price, and inventory
 - **Parameter controls** — γ, κ, vol window, and risk settings while the simulation runs
 
+
+![Alt text](/images/one.png)
+![Alt text](/images/two.png)
+![Alt text](/images/three.png)
+![Alt text](/images/four.png)
+
+
 ## Quick start
 
 ### Prerequisites
