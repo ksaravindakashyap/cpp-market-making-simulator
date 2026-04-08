@@ -94,9 +94,16 @@ The React dashboard connects over WebSocket and renders the simulation state in 
 
 
 ![Alt text](/images/one.png)
-![Alt text](/images/two.png)
-![Alt text](/images/three.png)
+
+### Depth and Cumulative PNL
 ![Alt text](/images/four.png)
+
+### Strategy Comparision after running the A/B test
+![Alt text](/images/two.png)
+
+### Inventory and Volatility
+![Alt text](/images/three.png)
+
 
 
 ## Quick start
